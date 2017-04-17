@@ -1,0 +1,293 @@
+<html><head></head><body><div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a href="https://github.com/mongodb-js/connect-mongodb-session#readme">connect-mongodb-session (v1.3.0)</a>
+</h1>
+<h4>MongoDB session store for connect/express built by MongoDB</h4>
+<div class="apidocSectionDiv"><a href="#apidoc.tableOfContents" id="apidoc.tableOfContents"><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.connect-mongodb-session">module connect-mongodb-session</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.connect-mongodb-session.connect-mongodb-session">
+            function <span class="apidocSignatureSpan"></span>connect-mongodb-session
+            <span class="apidocSignatureSpan">(connect)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.connect-mongodb-session.toString">
+            function <span class="apidocSignatureSpan">connect-mongodb-session.</span>toString
+            <span class="apidocSignatureSpan">()</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.connect-mongodb-session.toString">module connect-mongodb-session.toString</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.connect-mongodb-session.toString.toString">
+            function <span class="apidocSignatureSpan">connect-mongodb-session.</span>toString
+            <span class="apidocSignatureSpan">()</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.connect-mongodb-session" id="apidoc.module.connect-mongodb-session">module connect-mongodb-session</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.connect-mongodb-session.connect-mongodb-session" id="apidoc.element.connect-mongodb-session.connect-mongodb-session">
+        function <span class="apidocSignatureSpan"></span>connect-mongodb-session
+        <span class="apidocSignatureSpan">(connect)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">connect-mongodb-session = function (connect) {
+  var Store = connect.Store || connect.session.Store;
+  var defaults = {
+    uri: 'mongodb://localhost:27017/test',
+    collection: 'sessions',
+    connectionOptions: {},
+    expires: 1000 * 60 * 60 * 24 * 14, // 2 weeks
+    idField: '_id'
+  };
+
+  var MongoDBStore = function(options, callback) {
+    var _this = this;
+    this._emitter = new EventEmitter();
+    this._errorHandler = handleError.bind(this);
+
+    if (typeof options === 'function') {
+      callback = options;
+      options = {};
+    } else {
+      options = options || {};
+    }
+
+    mergeOptions(options, defaults);
+
+    Store.call(this, options);
+    this.options = options;
+
+    var connOptions = options.connectionOptions;
+    mongodb.MongoClient.connect(options.uri, connOptions, function(error, db) {
+      if (error) {
+        var e = new Error('Error connecting to db: ' + error.message);
+        return _this._errorHandler(e, callback);
+      }
+
+      db.
+        collection(options.collection).
+        ensureIndex({ expires: 1 }, { expireAfterSeconds: 0 }, function(error) {
+          if (error) {
+            var e = new Error('Error creating index: ' + error.message);
+            return _this._errorHandler(e, callback);
+          }
+
+          _this.db = db;
+          _this._emitter.emit('connected');
+
+          return callback &amp;&amp; callback();
+        });
+    });
+  };
+
+  MongoDBStore.prototype = Object.create(Store.prototype);
+
+  MongoDBStore.prototype._generateQuery = function(id) {
+    var ret = {};
+    ret[this.options.idField] = id;
+    return ret;
+  };
+
+  MongoDBStore.prototype.get = function(id, callback) {
+    var _this = this;
+
+    if (!this.db) {
+      return this._emitter.once('connected', function() {
+        _this.get.call(_this, id, callback);
+      });
+    }
+
+    this.db.collection(this.options.collection).
+      findOne(this._generateQuery(id), function(error, session) {
+        if (error) {
+          var e = new Error('Error finding ' + id + ': ' + error.message);
+          return _this._errorHandler(e, callback);
+        } else if (session) {
+          if (!session.expires || new Date &lt; session.expires) {
+            return callback(null, session.session);
+          } else {
+            return _this.destroy(id, callback);
+          }
+        } else {
+          return callback();
+        }
+      });
+  };
+
+  MongoDBStore.prototype.destroy = function(id, callback) {
+    var _this = this;
+    if (!this.db) {
+      return this._emitter.once('connected', function() {
+        _this.destroy.call(_this, id, callback);
+      });
+    }
+
+    this.db.collection(this.options.collection).
+      remove(this._generateQuery(id), function(error) {
+        if (error) {
+          var e = new Error('Error destroying ' + id + ': ' + error.message);
+          return _this._errorHandler(e, callback);
+        }
+        callback &amp;&amp; callback();
+      });
+  };
+
+  MongoDBStore.prototype.clear = function(callback) {
+    var _this = this;
+    if (!this.db) {
+      return this._emitter.once('connected', function() {
+        _this.clear.call(_this, callback);
+      });
+    }
+
+    this.db.collection(this.options.collection).
+      remove({}, function(error) {
+        if (error) {
+          var e = new Error('Error clearing all sessions: ' + error.message);
+          return _this._errorHandler(e, callback);
+        }
+        callback &amp;&amp; callback();
+      });
+  };
+
+  MongoDBStore.prototype.set = function(id, session, callback) {
+    var _this = this;
+
+    if (!this.db) {
+      return this._emitter.once('connected', function() {
+        _this.set.call(_this, id, session, callback);
+      });
+    }
+
+    var sess = {};
+    for (var key in session) {
+      if (key === 'cookie') {
+        sess[key] = session[key].toJSON ? session[key].toJSON() : session[key];
+      } else {
+        sess[key] = session[key];
+      }
+    }
+
+    var s = this._generateQuery(id);
+    s.session = sess;
+    if (session &amp;&amp; session.cookie &amp;&amp; session.cookie.expires) {
+      s.expires = new Date(session.cookie.expires);
+    } else {
+      var now = new Date();
+      s.expires = new Date(now. ...</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.connect-mongodb-session.toString" id="apidoc.element.connect-mongodb-session.toString">
+        function <span class="apidocSignatureSpan">connect-mongodb-session.</span>toString
+        <span class="apidocSignatureSpan">()</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">toString = function () {
+    return text;
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.connect-mongodb-session.toString" id="apidoc.module.connect-mongodb-session.toString">module connect-mongodb-session.toString</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.connect-mongodb-session.toString.toString" id="apidoc.element.connect-mongodb-session.toString.toString">
+        function <span class="apidocSignatureSpan">connect-mongodb-session.</span>toString
+        <span class="apidocSignatureSpan">()</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function toString() { [native code] }</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
+</body></html>
