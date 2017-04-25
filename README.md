@@ -1,4 +1,7 @@
-# api documentation for  [connect-mongodb-session (v1.3.0)](https://github.com/mongodb-js/connect-mongodb-session#readme)  [![npm package](https://img.shields.io/npm/v/npmdoc-connect-mongodb-session.svg?style=flat-square)](https://www.npmjs.org/package/npmdoc-connect-mongodb-session) [![travis-ci.org build-status](https://api.travis-ci.org/npmdoc/node-npmdoc-connect-mongodb-session.svg)](https://travis-ci.org/npmdoc/node-npmdoc-connect-mongodb-session)
+# npmdoc-connect-mongodb-session
+
+#### basic api documentation for  [connect-mongodb-session (v1.3.0)](https://github.com/mongodb-js/connect-mongodb-session#readme)  [![npm package](https://img.shields.io/npm/v/npmdoc-connect-mongodb-session.svg?style=flat-square)](https://www.npmjs.org/package/npmdoc-connect-mongodb-session) [![travis-ci.org build-status](https://api.travis-ci.org/npmdoc/node-npmdoc-connect-mongodb-session.svg)](https://travis-ci.org/npmdoc/node-npmdoc-connect-mongodb-session)
+
 #### MongoDB session store for connect/express built by MongoDB
 
 [![NPM](https://nodei.co/npm/connect-mongodb-session.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/package/connect-mongodb-session)
@@ -79,7 +82,8 @@
         "test-travis": "env NODE_PATH=../ ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -- -R spec ./test/*.test.js",
         "unit-coverage": "env NODE_PATH=../ ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -- -R spec ./test/unit.test.js"
     },
-    "version": "1.3.0"
+    "version": "1.3.0",
+    "bin": {}
 }
 ```
 
